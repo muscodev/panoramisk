@@ -1,7 +1,7 @@
 import subprocess
 
 import pytest
-
+import pytest_asyncio
 from panoramisk import utils
 
 
@@ -43,6 +43,14 @@ class Asterisk:
                 stderr=subprocess.STDOUT,
                 cwd=self.cwd,
             )
+
+
+# @pytest.fixture(scope="module")
+# def event_loop():
+#     nest_asyncio.apply()
+#     loop = asyncio.new_event_loop()
+#     yield loop
+#     loop.close()
 
 
 @pytest.fixture

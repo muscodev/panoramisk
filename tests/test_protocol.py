@@ -4,8 +4,7 @@ import pytest
 
 
 @pytest.fixture
-def conn(request, event_loop):
-
+def conn(request):
     def callback(*args):
         pass
 
