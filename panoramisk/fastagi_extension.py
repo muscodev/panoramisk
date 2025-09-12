@@ -1,4 +1,4 @@
-from typing import get_type_hints, List
+from typing import get_type_hints, List, Dict, Callable, Tuple
 import inspect
 from urllib.parse import urlparse,parse_qs
 import asyncio
@@ -8,6 +8,20 @@ import logging
 
 
 log = logging.getLogger(__name__)
+
+class AgiRouter:
+    def __init__(self):
+        self.routes: List[Tuple[str, Callable]] = []  
+
+    def route(self, path: str):
+        """
+        register a path and its handler function.
+        """
+        def decorator(func: Callable):
+            self.routes.append((path, func))
+            return func
+        return decorator
+
 
 
 class FastAgi(fast_agi.Application):
@@ -25,11 +39,10 @@ class FastAgi(fast_agi.Application):
             
             @wraps(callback)
             async def wrapper(raw_rqt:fast_agi.Request):
-                # print('callback ',callback)
                 sig = inspect.signature(callback)
-                # print('sig ',sig.parameters)
+
                 type_hints = get_type_hints(callback)
-                # print('type_hints ',type_hints)
+
                 request = Request(
                         raw_rqt.app,
                         raw_rqt.headers,
@@ -40,12 +53,9 @@ class FastAgi(fast_agi.Application):
 
                 request_key = {k: request for  k,v in  type_hints.items() if  v==Request }
                 bind = sig.bind_partial(*request.args,**request.query_params,**request_key)
-                # if 'request' in sig.parameters:
-                #     bind.arguments['request'] = request 
     
                 bind.apply_defaults()
-                # print('bind from ',bind)
-                # print(bind.arguments)
+
                 # Convert types according to type hints
                 for name, value in bind.arguments.items():
 
@@ -66,11 +76,19 @@ class FastAgi(fast_agi.Application):
                     raise
 
             self.add_route(path,wrapper)
-
+            log.info(f"Added [{callback}] to the path '{path}'")
             return callback
         
         return decorator
-            
+
+    def include_router(self,router: AgiRouter):
+        """
+        
+        """
+        for path, callbk in router.routes:
+            self.route(path=path)(callbk)
+
+
 
 
 class VerboseLevel:
