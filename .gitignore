@@ -44,3 +44,4 @@ var
 *.wpr
 pyvenv/
 .directory
+.venv

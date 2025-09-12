@@ -89,7 +89,8 @@ async def fake_asterisk_client(unused_tcp_port, err=False):
 
 
 @pytest.mark.asyncio
-async def test_fast_agi_application(event_loop, unused_tcp_port):
+async def test_fast_agi_application(unused_tcp_port):
+    event_loop = asyncio.get_event_loop()
     fa_app = Application(loop=event_loop)
     fa_app.add_route('call_waiting', call_waiting)
 
@@ -105,7 +106,8 @@ async def test_fast_agi_application(event_loop, unused_tcp_port):
 
 
 @pytest.mark.asyncio
-async def test_fast_agi_application_error(event_loop, unused_tcp_port):
+async def test_fast_agi_application_error( unused_tcp_port):
+    event_loop = asyncio.get_event_loop()
     fa_app = Application(loop=event_loop, raise_on_error=True)
     fa_app.add_route('invalid', invalid)
 

@@ -22,7 +22,8 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.asyncio
-async def test_reconnection_without_lost(event_loop, asterisk):
+async def test_reconnection_without_lost(asterisk):
+    event_loop = asyncio.get_event_loop()    
     manager = Manager(loop=event_loop,
                       username='username',
                       secret='mysecret')

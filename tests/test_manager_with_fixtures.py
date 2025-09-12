@@ -9,7 +9,8 @@ test_dir = os.path.join(os.path.dirname(__file__), 'fixtures')
 
 
 @pytest.fixture
-def manager(request, event_loop):
+def manager(request):
+    event_loop = asyncio.get_event_loop()
     def manager(stream=None, **config):
         config['loop'] = event_loop
         if stream:
@@ -161,7 +162,8 @@ def test_coroutine_events_handler(manager):
     assert matches == ['Peer*']
 
 
-def test_from_config(event_loop, tmpdir):
+def test_from_config( tmpdir):
+    event_loop = asyncio.get_event_loop()    
     f = tmpdir.mkdir("config").join("config.ini")
     f.write('''
 [asterisk]
