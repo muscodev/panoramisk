@@ -1,6 +1,5 @@
 import asyncio
 import pytest
-import pytest_asyncio
 from panoramisk.exceptions import AGIAppError
 from panoramisk.fast_agi import Application
 
