@@ -105,7 +105,7 @@ def generate_agi_payload(path: str, args: list = None, kwargs: dict = None) -> b
     arg_content = '\n'.join(f'agi_arg_{i + 1}: {args[i]}' for i in range(len(args)))
 
     payload = f"""agi_network: yes
-agi_network_script: {path}
+agi_network_script: {path}?{args_formatted}
 agi_request: agi://127.0.0.1:4574/{path}?{args_formatted}
 agi_channel: SIP/xxxxxx-00000000
 agi_language: en_US

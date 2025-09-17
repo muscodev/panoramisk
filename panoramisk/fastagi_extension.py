@@ -4,12 +4,25 @@ from urllib.parse import urlparse,parse_qs
 import asyncio
 import time
 from functools import wraps
+from collections import OrderedDict
 from . import fast_agi
 import logging
 
 
 log = logging.getLogger(__name__)
 
+
+def get_path_before_query(url):
+    try:
+        parsed = urlparse(url)
+        # Reconstruct the URL path without query or fragment
+        path = parsed.path
+        return path
+    except Exception as e:
+        # Handle invalid URLs
+        print(f"Error parsing URL: {e}")
+        return None
+    
 class AgiRouter:
     def __init__(self):
         self.routes: List[Tuple[str, Callable]] = []  
@@ -94,6 +107,59 @@ class FastAgi(fast_agi.Application):
         for path, callbk in router.routes:
             self.route(path=path)(callbk)
 
+    async def handler(self, reader, writer):
+        """AsyncIO coroutine handler to launch socket listening.
+
+        :Example:
+
+        ::
+
+            async def start(request):
+                print('Receive a FastAGI request')
+                print(['AGI variables:', request.headers])
+
+            fa_app = Application()
+            fa_app.add_route('calls/start', start)
+            coro = asyncio.start_server(fa_app.handler, '0.0.0.0', 4574)
+            server = loop.run_until_complete(coro)
+
+        See https://docs.python.org/3/library/asyncio-stream.html
+        """
+        buffer = b''
+        while b'\n\n' not in buffer:
+            buffer += await reader.read(self.buf_size)
+        lines = buffer[:-2].decode(self.default_encoding, errors=self.decode_errors).split('\n')
+        headers = OrderedDict([
+            line.split(': ', 1) for line in lines if ': ' in line
+        ])
+
+        agi_network_script = get_path_before_query(headers.get('agi_network_script'))
+
+        log.info('Received FastAGI request from %r for "%s" route',
+                 writer.get_extra_info('peername'), agi_network_script)
+        log.debug("Asterisk Headers: %r", headers)
+
+        if agi_network_script is not None:
+            route = self._route.get(agi_network_script)
+            if route is not None:
+                request = Request(app=self,
+                                  headers=headers,
+                                  reader=reader, writer=writer,
+                                  encoding=self.default_encoding)
+                try:
+                    await route(request)
+                except BaseException:
+                    log.exception(
+                        'An exception has been raised for the request "%s"',
+                        agi_network_script
+                    )
+            else:
+                log.error('No route for the request "%s"', agi_network_script)
+        else:
+            log.error('No agi_network_script header for the request')
+        log.debug("Closing client socket")
+        writer.close()
+
 
 
 
@@ -140,7 +206,7 @@ class Request(fast_agi.Request):
     def __init__(self, app, headers, reader, writer, encoding='utf-8'):
         super().__init__(app, headers, reader, writer, encoding)
         self.channel = self.headers.get("agi_channel")
-        self.path: str =  self.headers.get("agi_network_script")
+        self.path: str =  get_path_before_query(self.headers.get("agi_network_script"))
         self.args: List = [v for k,v in self.headers.items() if k.startswith('agi_arg_')]
         self.parsed_url = urlparse(self.headers.get('agi_request'))
         self.query_params = parse_qs(self.parsed_url.query)
