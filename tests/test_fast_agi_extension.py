@@ -15,10 +15,10 @@ async def test_route_registration_and_arg_binding(unused_tcp_port):
     app = FastAgi()
 
     @app.route('check')
-    async def check(request: Request, x: int='3'):
+    async def check(request: Request,number: str, x: int=3):
+        print(x)
         if request.path == 'check' and isinstance(x, int) :
             await request.send_command('OK')
-
 
         
     await app.start_server(port=unused_tcp_port)
@@ -26,7 +26,7 @@ async def test_route_registration_and_arg_binding(unused_tcp_port):
     client = FakeAsteriskClient(unused_tcp_port)
 
     await client.connect()
-    await client.write(generate_agi_payload('check'))
+    await client.write(generate_agi_payload('check',kwargs={"x":55,"number":"9112345678"}))
     client.handler(client_handler)
     await client.read()
     await client.close()
@@ -42,12 +42,12 @@ async def test_agi_router(unused_tcp_port):
     router = AgiRouter()
 
     @router.route('check')
-    async def check(request: Request, x: int='3'):
+    async def check(request: Request, x: int=3):
         if request.path == 'check' and isinstance(x, int) :
             await request.send_command('OK')
 
     @router.route('check/sms')
-    async def check_sms(request: Request, x: int='3'):
+    async def check_sms(request: Request, x: int=3):
         if request.path == 'check/sms' and isinstance(x, int) :
             await request.send_command('OK')
 
