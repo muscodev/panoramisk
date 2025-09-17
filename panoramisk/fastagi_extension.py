@@ -53,8 +53,12 @@ class FastAgi(fast_agi.Application):
                 )
 
                 request_key = {k: request for  k,v in  type_hints.items() if  v==Request }
-                bind = sig.bind_partial(*request.args,**request.query_params,**request_key)
-    
+                try:
+                    bind = sig.bind_partial(**request.query_params,**request_key)
+                except TypeError as e:
+                    log.error(str(e))
+                    raise
+
                 bind.apply_defaults()
 
                 # Convert types according to type hints
@@ -67,7 +71,8 @@ class FastAgi(fast_agi.Application):
 
                     if expected_type and value is not None:
                         try:
-                            bind.arguments[name] = expected_type(value)
+                            if expected_type is not list and isinstance(value, list):
+                                bind.arguments[name] = expected_type(value[0])
                         except Exception:
                             pass  # keep original if conversion fails  
                 try:
