@@ -2,6 +2,7 @@ from typing import get_type_hints, List, Dict, Callable, Tuple
 import inspect
 from urllib.parse import urlparse,parse_qs
 import asyncio
+import time
 from functools import wraps
 from . import fast_agi
 import logging

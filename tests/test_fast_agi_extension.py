@@ -1,8 +1,7 @@
 import asyncio
 import pytest
-from panoramisk.exceptions import AGIAppError
 from panoramisk.fastagi_extension import FastAgi, Request, AgiRouter
-from .test_utils import FakeAsteriskClient, generate_payload
+from panoramisk.testing import FakeAsteriskClient, generate_agi_payload
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -27,7 +26,7 @@ async def test_route_registration_and_arg_binding(unused_tcp_port):
     client = FakeAsteriskClient(unused_tcp_port)
 
     await client.connect()
-    await client.write(generate_payload('check'))
+    await client.write(generate_agi_payload('check'))
     client.handler(client_handler)
     await client.read()
     await client.close()
@@ -64,7 +63,7 @@ async def test_agi_router(unused_tcp_port):
     client = FakeAsteriskClient(unused_tcp_port)
 
     await client.connect()
-    await client.write(generate_payload('check/sms'))
+    await client.write(generate_agi_payload('check/sms'))
     client.handler(client_handler)
     await client.read()
     await client.close()
