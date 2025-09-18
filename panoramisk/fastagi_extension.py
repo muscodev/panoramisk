@@ -5,11 +5,39 @@ import asyncio
 import time
 from functools import wraps
 from collections import OrderedDict
+from dataclasses import dataclass
 from . import fast_agi
 import logging
 
 
 log = logging.getLogger(__name__)
+
+
+
+def _convert_to_char(value, items):
+    """
+    Converts the given value into an ASCII character or raises `AGIValueError` with `items` as the
+    payload.
+    """
+    try:
+        value = value or "0"
+        if value == "0":
+            return None
+        return chr(int(value))
+    except ValueError:
+        raise AGIValueError(
+            f"Unable to convert Asterisk result to DTMF character: {value}"
+        )
+
+
+def _process_digit_list(digits):
+    """
+    Ensures that digit-lists are processed uniformly.
+    """
+    if type(digits) in (list, tuple, set, frozenset):
+        digits = "".join([str(d) for d in digits])
+    return f'"{digits}"'
+
 
 
 def get_path_before_query(url):
@@ -22,7 +50,38 @@ def get_path_before_query(url):
         # Handle invalid URLs
         print(f"Error parsing URL: {e}")
         return None
-    
+
+
+class ArgModel:
+    """
+    usage:
+
+     
+        @dataclass
+        class IVRInput(ArgModel):
+            caller_id: str
+            digits_pressed: str
+            menu_level: int
+            language: str
+
+    """
+
+    def __post_init__(self):
+
+        """convert into he actual type"""
+
+        hints = get_type_hints(self.__class__)
+
+        for f, typ in hints.items():
+            value = getattr(self,f)
+            try:
+                setattr(self,f,typ(value))
+            except Exception as e:
+                log.error(str(e))
+
+
+
+
 class AgiRouter:
     def __init__(self):
         self.routes: List[Tuple[str, Callable]] = []  
@@ -66,8 +125,9 @@ class FastAgi(fast_agi.Application):
                 )
 
                 request_key = {k: request for  k,v in  type_hints.items() if  v==Request }
+                arg_model = {k: model(*request.args) for  k,model in  type_hints.items() if  issubclass(model,ArgModel) }
                 try:
-                    bind = sig.bind_partial(**request.query_params,**request_key)
+                    bind = sig.bind_partial(**request.query_params,**request_key,**arg_model)
                 except TypeError as e:
                     log.error(str(e))
                     raise
@@ -78,8 +138,7 @@ class FastAgi(fast_agi.Application):
                 for name, value in bind.arguments.items():
 
                     expected_type = type_hints.get(name)
-                    if expected_type == type(Request):
-                        bind.arguments[name] = request 
+                    if expected_type == Request or issubclass(expected_type,ArgModel):
                         continue
 
                     if expected_type and value is not None:
@@ -173,32 +232,6 @@ class VerboseLevel:
 
 class AGIValueError(ValueError):
     pass
-
-
-def _convert_to_char(value, items):
-    """
-    Converts the given value into an ASCII character or raises `AGIValueError` with `items` as the
-    payload.
-    """
-    try:
-        value = value or "0"
-        if value == "0":
-            return None
-        return chr(int(value))
-    except ValueError:
-        raise AGIValueError(
-            f"Unable to convert Asterisk result to DTMF character: {value}"
-        )
-
-
-def _process_digit_list(digits):
-    """
-    Ensures that digit-lists are processed uniformly.
-    """
-    if type(digits) in (list, tuple, set, frozenset):
-        digits = "".join([str(d) for d in digits])
-    return f'"{digits}"'
-
 
 
 class Request(fast_agi.Request):
